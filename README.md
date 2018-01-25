@@ -28,7 +28,7 @@ gulp.task('scripts', function() {
   gulp.src('./lib/*.js')
     .pipe(concatp('all.js', function(content, file) {
         // process the content
-        
+
         return content;
     })
     .pipe(gulp.dest('./dist/'))
@@ -44,7 +44,11 @@ var concatp = require('gulp-concat-process');
 
 gulp.task('scripts', function() {
   gulp.src(['./lib/file3.js', './lib/file1.js', './lib/file2.js'])
-    .pipe(concatp('all.js'))
+    .pipe(concatp('all.js', function(content, file) {
+        // process the content
+
+        return content;
+    }))
     .pipe(gulp.dest('./dist/'))
 });
 ```
@@ -57,14 +61,19 @@ For instance:
 .pipe(concat('main.js', {newLine: ';'}))
 ```
 
-To specify `cwd`, `path` and other [vinyl](https://github.com/wearefractal/vinyl) properties, gulp-concat-callback accepts `Object` as first argument:
+To specify `cwd`, `path` and other [vinyl](https://github.com/wearefractal/vinyl) properties, gulp-concat-process accepts `Object` as first argument but must contain a process function:
 
 ```js
 var concat = require('gulp-concat-process');
+var process = function(content, file) {
+        // process the content
+
+        return content;
+    };
 
 gulp.task('scripts', function() {
   gulp.src(['./lib/file3.js', './lib/file1.js', './lib/file2.js'])
-    .pipe(concat({ path: 'new.js', stat: { mode: 0666 }}))
+    .pipe(concat({ path: 'new.js', stat: { mode: 0666 }, process: process }))
     .pipe(gulp.dest('./dist'))
 });
 ```
@@ -83,7 +92,11 @@ var sourcemaps = require('gulp-sourcemaps');
 gulp.task('javascript', function() {
   gulp.src('src/**/*.js')
     .pipe(sourcemaps.init())
-      .pipe(concat('all.js'))
+      .pipe(concat('all.js', function(content, file) {
+        // process the content
+
+        return content;
+    }))
     .pipe(sourcemaps.write())
     .pipe(gulp.dest('dist'));
 });

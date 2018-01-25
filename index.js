@@ -27,10 +27,10 @@ module.exports = function(file, process, opt) {
     fileName = file;
   } else if (typeof file.path === 'string') {
     fileName = path.basename(file.path);
-    if (typeof file.cb !== 'function') {
+    if (typeof file.process !== 'function') {
       throw new Error('gulp-concat-process: Missing the process function for gulp-concat-process');
     }
-    process = file.cb;
+    process = file.process;
   } else {
     throw new Error('gulp-concat-process: Missing path in file options for gulp-concat-process');
   }
