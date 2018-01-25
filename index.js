@@ -1,68 +1,104 @@
-var through = require('through');
+var through = require('through2');
 var path = require('path');
-var gutil = require('gulp-util');
-var PluginError = gutil.PluginError;
-var File = gutil.File;
-var Buffer = require('buffer').Buffer;
+var File = require('vinyl');
 var Concat = require('concat-with-sourcemaps');
 
-module.exports = function(file, cb, opt) {
-  if (!file) throw new PluginError('gulp-concat-callback', 'Missing file option for gulp-concat-callback');
-  if (typeof file === 'string' && !cb) throw new PluginError('gulp-concat-callback', 'Missing the callback function for gulp-concat-callback');
-
-  if (!opt) opt = {};
+module.exports = function(file, process, opt) {
+  if (!file) {
+    throw new Error('gulp-concat-process: Missing file option for gulp-concat-process');
+  }
+  if (typeof file === 'string' && (!process || typeof process != 'function' )) {
+    throw new Error('gulp-concat-process: Missing the process function for gulp-concat-process');
+  }
+  opt = opt || {};
 
   // to preserve existing |undefined| behaviour and to introduce |newLine: ""| for binaries
-  if (typeof opt.newLine !== 'string') opt.newLine = gutil.linefeed;
+  if (typeof opt.newLine !== 'string') {
+    opt.newLine = '\n';
+  }
 
-  var firstFile = null;
+  var isUsingSourceMaps = false;
+  var latestFile;
+  var latestMod;
+  var fileName;
+  var concat;
 
-  var fileName = file;
-  if (typeof file !== 'string') {
-    if (typeof file.path !== 'string') {
-      throw new PluginError('gulp-concat-callback', 'Missing path in file options for gulp-concat-callback');
-    }
-
-    if (typeof file.cb !== 'function') {
-      throw new PluginError('gulp-concat-callback', 'Missing the callback function for gulp-concat-callback');
-    }
-    cb = file.cb;
-
+  if (typeof file === 'string') {
+    fileName = file;
+  } else if (typeof file.path === 'string') {
     fileName = path.basename(file.path);
-    firstFile = new File(file);
+    if (typeof file.cb !== 'function') {
+      throw new Error('gulp-concat-process: Missing the process function for gulp-concat-process');
+    }
+    process = file.cb;
+  } else {
+    throw new Error('gulp-concat-process: Missing path in file options for gulp-concat-process');
   }
 
-  var concat = null;
-
-  function bufferContents(file) {
-    if (file.isNull()) return; // ignore
-    if (file.isStream()) return this.emit('error', new PluginError('gulp-concat-callback',  'Streaming not supported'));
-
-    if (!firstFile) firstFile = file;
-    if (!concat) concat = new Concat(!!firstFile.sourceMap, fileName, opt.newLine);
-
-    concat.add(file.relative, cb(file.contents.toString(), file), file.sourceMap);
-  }
-
-  function endStream() {
-    if (firstFile) {
-      var joinedFile = firstFile;
-
-      if (typeof file === 'string') {
-        joinedFile = firstFile.clone({contents: false});
-        joinedFile.path = path.join(firstFile.base, file);
-      }
-
-      joinedFile.contents = new Buffer(concat.content);
-
-      if (concat.sourceMapping)
-        joinedFile.sourceMap = JSON.parse(concat.sourceMap);
-
-      this.emit('data', joinedFile);
+  function bufferContents(file, enc, cb) {
+    // ignore empty files
+    if (file.isNull()) {
+      cb();
+      return;
     }
 
-    this.emit('end');
+    // we don't do streams (yet)
+    if (file.isStream()) {
+      this.emit('error', new Error('gulp-concat-process: Streaming not supported'));
+      cb();
+      return;
+    }
+
+    // enable sourcemap support for concat
+    // if a sourcemap initialized file comes in
+    if (file.sourceMap && isUsingSourceMaps === false) {
+      isUsingSourceMaps = true;
+    }
+
+    // set latest file if not already set,
+    // or if the current file was modified more recently.
+    if (!latestMod || file.stat && file.stat.mtime > latestMod) {
+      latestFile = file;
+      latestMod = file.stat && file.stat.mtime;
+    }
+
+    // construct concat instance
+    if (!concat) {
+      concat = new Concat(isUsingSourceMaps, fileName, opt.newLine);
+    }
+
+    // add file to concat instance
+    concat.add(file.relative, process(file.contents, file), file.sourceMap);
+    cb();
   }
 
-  return through(bufferContents, endStream);
+  function endStream(cb) {
+    // no files passed in, no file goes out
+    if (!latestFile || !concat) {
+      cb();
+      return;
+    }
+
+    var joinedFile;
+
+    // if file opt was a file path
+    // clone everything from the latest file
+    if (typeof file === 'string') {
+      joinedFile = latestFile.clone({contents: false});
+      joinedFile.path = path.join(latestFile.base, file);
+    } else {
+      joinedFile = new File(file);
+    }
+
+    joinedFile.contents = concat.content;
+
+    if (concat.sourceMapping) {
+      joinedFile.sourceMap = JSON.parse(concat.sourceMap);
+    }
+
+    this.push(joinedFile);
+    cb();
+  }
+
+  return through.obj(bufferContents, endStream);
 };

@@ -3,7 +3,7 @@ var should = require('should');
 var path = require('path');
 var assert = require('stream-assert');
 var test = require('./test-stream');
-var File = require('gulp-util').File;
+var File = require('vinyl');
 var gulp = require('gulp');
 var sourcemaps = require('gulp-sourcemaps');
 require('mocha');
@@ -15,19 +15,19 @@ var cb = function(contents, file) {
   return contents;
 }
 
-describe('gulp-concat-callback', function() {
+describe('gulp-concat-process', function() {
   describe('concat()', function() {
 
     it('should throw, when arguments is missing', function () {
       (function() {
         concat();
-      }).should.throw('Missing file option for gulp-concat-callback');
+      }).should.throw('gulp-concat-process: Missing file option for gulp-concat-process');
     });
 
-    it('should throw, when callback options is missing', function () {
+    it('should throw, when process options is missing', function () {
       (function() {
         concat('test.js');
-      }).should.throw('Missing the callback function for gulp-concat-callback');
+      }).should.throw('gulp-concat-process: Missing the process function for gulp-concat-process');
     });
 
     it('should ignore null files', function (done) {
@@ -43,7 +43,7 @@ describe('gulp-concat-callback', function() {
       gulp.src(fixtures('*'), { buffer: false })
         .pipe(concat('test.js', cb))
         .on('error', function (err) {
-          err.message.should.eql('Streaming not supported');
+          err.message.should.eql('gulp-concat-process: Streaming not supported');
           done();
         });
     });
@@ -95,7 +95,7 @@ describe('gulp-concat-callback', function() {
         .pipe(assert.end(done));
     });
 
-    it('should update the content with the callback function', function(done) {
+    it('should update the content with the process function', function(done) {
       var cb = function(contents, file) {
 
         return "Hello";
@@ -144,13 +144,13 @@ describe('gulp-concat-callback', function() {
       it('should throw without path', function () {
         (function() {
           concat({ path: undefined });
-        }).should.throw('Missing path in file options for gulp-concat-callback');
+        }).should.throw('gulp-concat-process: Missing path in file options for gulp-concat-process');
       });
 
-      it('should throw without callback', function () {
+      it('should throw without process', function () {
         (function() {
           concat({ path: 'test.js' });
-        }).should.throw('Missing the callback function for gulp-concat-callback');
+        }).should.throw('gulp-concat-process: Missing the process function for gulp-concat-process');
       });
 
       it('should create file based on path property', function (done) {
