@@ -1,7 +1,7 @@
 {
   "name": "gulp-concat-process",
   "description": "Concatenates files",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "homepage": "http://github.com/thehuijb/gulp-concat-process",
   "repository": {
     "type": "git",
